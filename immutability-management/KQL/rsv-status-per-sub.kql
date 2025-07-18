@@ -1,0 +1,5 @@
+resources
+| where type == "microsoft.recoveryservices/vaults" and subscriptionId == "SUB_ID"
+| extend immutabilityState = properties.securitySettings.immutabilitySettings.state
+| where isnull(immutabilityState) or immutabilityState in ("Unlocked", "Disabled", "Locked")
+| project name, resourceGroup, subscriptionId, location, immutabilityState
