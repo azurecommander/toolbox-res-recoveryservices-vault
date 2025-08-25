@@ -5,6 +5,26 @@ get_rsvs_by_immutability_state() {
   local state_filter_csv="$2"
   local output_format="${3:-table}"
 
+  # Validate state_filter_csv parameter
+  local valid_states=("null" "Disabled" "Unlocked" "Locked")
+  IFS=',' read -ra states <<< "$state_filter_csv"
+  for state in "${states[@]}"; do
+    if [[ ! " ${valid_states[*]} " =~ " $state " ]]; then
+      echo "Error: Invalid state '$state' in state_filter_csv."
+      echo "Supported values are: ${valid_states[*]}."
+      return 1
+    fi
+  done
+
+  # Check / install required AZ CLI extensions
+  local required_extensions=("resource-graph")
+  for ext in "${required_extensions[@]}"; do
+    if ! az extension show --name "$ext" &>/dev/null; then
+      echo "Installing missing AZ CLI extension: $ext"
+      az extension add --name "$ext" --only-show-errors
+    fi
+  done
+
   # Parse input CSV into array
   IFS=',' read -ra states <<< "$state_filter_csv"
 
