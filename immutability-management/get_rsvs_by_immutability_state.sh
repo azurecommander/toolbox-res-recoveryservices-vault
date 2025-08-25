@@ -1,16 +1,15 @@
-#!/bin/bash
-
 get_rsvs_by_immutability_state() {
   local subscription_id="$1"
-  local state_filter_csv="$2"
+  local -n state_array="$2"  # Use a different name for the local reference
   local output_format="${3:-table}"
 
-  # Validate state_filter_csv parameter
+  # Define valid states
   local valid_states=("null" "Disabled" "Unlocked" "Locked")
-  IFS=',' read -ra states <<< "$state_filter_csv"
-  for state in "${states[@]}"; do
+
+  # Validate states
+  for state in "${state_array[@]}"; do
     if [[ ! " ${valid_states[*]} " =~ " $state " ]]; then
-      echo "Error: Invalid state '$state' in state_filter_csv."
+      echo "Error: Invalid state '$state'."
       echo "Supported values are: ${valid_states[*]}."
       return 1
     fi
@@ -25,13 +24,11 @@ get_rsvs_by_immutability_state() {
     fi
   done
 
-  # Parse input CSV into array
-  IFS=',' read -ra states <<< "$state_filter_csv"
-
+  # Construct filters
   local include_null=false
   local values=()
 
-  for state in "${states[@]}"; do
+  for state in "${state_array[@]}"; do
     if [[ "$state" == "null" ]]; then
       include_null=true
     else
@@ -48,16 +45,17 @@ get_rsvs_by_immutability_state() {
   # Construct state filter
   local state_filter=""
   if $include_null && [ -n "$joined_states" ]; then
-    state_filter="isnull(immutabilityState) or immutabilityState in ($joined_states)"
+    state_filter="(isnull(immutabilityState) or immutabilityState in ($joined_states))"
   elif $include_null; then
     state_filter="isnull(immutabilityState)"
-  else
+  elif [ -n "$joined_states" ]; then
     state_filter="immutabilityState in ($joined_states)"
+  else
+    echo "Error: No valid states provided for filtering."
+    return 1
   fi
 
-  #echo "Running query with immutability filter: $state_filter"
-  #echo "Filtering by subscription: $subscription_id"
-
+  # Run the Azure Resource Graph query
   az graph query -q "
 resources
 | where type == 'microsoft.recoveryservices/vaults' and subscriptionId == '$subscription_id'
