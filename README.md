@@ -61,8 +61,22 @@ To be consumed by the **set_immutability_for_vaults** function, the output of **
 
 ### **Usage**:
 ```bash
+# Source the function definitions from files in the same folder
+source "./get_rsvs_by_immutability_state.sh"
+source "./set_immutability_for_vaults.sh"
+
 # Define an array of states
+sub=<YOUR_SUBSCRIPTION_ID>
 states=("null" "Unlocked" "Disabled" "Locked")
 
-# Call the function
+# Call the get_rsvs_by_immutability_state function
 get_rsvs_by_immutability_state "$sub" states "json"
+
+# Call the set_immutability_for_vaults function - To transition specified RSV states to desired state
+states=("Unlocked")
+set_immutability_for_vaults "$(get_rsvs_by_immutability_state "$sub" states json)" "Disabled" "$sub"
+```
+
+### Sample Function Calls
+
+The **sample-function-calls.sh** file also contains example calls to the functions.
