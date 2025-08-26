@@ -1,7 +1,34 @@
+#!/bin/bash
+
 set_immutability_for_vaults() {
   local vaults_json="$1"      # JSON array from get_rsvs_by_immutability_state (raw JSON string)
   local desired_state="$2"    # e.g. "Unlocked", "Locked", "Disabled"
   local sub="$3"              # subscription id (needed for az commands)
+
+  # Function to compare versions
+  version_gte() {
+    local v1="$1"
+    local v2="$2"
+    [ "$(printf '%s\n' "$v1" "$v2" | sort -V | head -n 1)" = "$v2" ]
+  }
+
+  # Check Azure CLI version
+  az_version=$(az version --query '"azure-cli"' -o tsv)
+  required_version="2.54.0"
+
+  if ! version_gte "$az_version" "$required_version"; then
+    echo "Error: Azure CLI version $required_version or higher is required."
+    echo "You have Azure CLI version $az_version installed."
+    echo "Please update Azure CLI: https://learn.microsoft.com/en-us/cli/azure/install-azure-cli"
+    return 1
+  fi
+
+  # Validate desired_state parameter
+  if [[ "$desired_state" != "Disabled" && "$desired_state" != "Locked" && "$desired_state" != "Unlocked" ]]; then
+    echo "Error: Invalid immutability state '$desired_state'."
+    echo "Supported values are: Disabled, Locked, Unlocked."
+    return 1
+  fi
 
   if ! command -v jq &>/dev/null; then
     echo "jq is required but not installed. Please install jq."
